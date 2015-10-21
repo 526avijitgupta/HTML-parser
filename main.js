@@ -25,10 +25,6 @@ function assertStartBeforeEnd(type) {
     "";
 }
 
-function displayError(msg) {
-    throw new Error(msg);
-}
-
 var Stack = function() {
     this.data = [];
     this.size = 0;
@@ -89,13 +85,13 @@ function printTree(root) {
 // var HTML = "<html><head></head><body><div>This is a div</div></html>";
 // var HTML = "<html><head></head><body></body></html>";
 // var HTML = "<html><head></head><body><div></div></body></html>";
-var HTML = "<HTML><head></head><body><!--This is a comment, this should be ignored .. <br></body></HTML>";
+// var HTML = "<HTML><head></head><body><!--This is a comment, this should be ignored .. <br></body></HTML>";
 // var HTML = "<HTML><head></head><body><!--This is a comment, this should be ignored .. --><br></body></HTML>";
-// var HTML = ">HTML></head></head><body><!--This is a comment, this should be ignored .. --><br></body></HTML>";
+var HTML = ">HTML></head></head><body><!--This is a comment, this should be ignored .. --><br></body></HTML>";
 
 var symStack = new Stack();
 
-var root, openElm, closeElm, errors = [], curr, matchArr = [], warnings = [];
+var root = {}, openElm, closeElm, errors = [], curr, matchArr = [], warnings = [];
 
 if (typeof HTML !== 'undefined') {
     while (HTML.length >= 1) {
@@ -105,23 +101,23 @@ if (typeof HTML !== 'undefined') {
         // Tag End
         else if (HTML.indexOf("</") === 0) {
             if (!assertStartBeforeEnd("tag")) {
-                displayError('Closing tag encountered before an opening one!');
-                break;
+                errors.push('Closing tag encountered before an opening one!');
+                // break;
             }
             symStack.pop();
             matchArr = HTML.match(TAG_END_REGEX);
             closeElm = matchArr[2].substr(1).toLowerCase();
             console.log('Close: ', closeElm);
-            curr = curr.parent;
+            if (curr) {
+                curr = curr.parent;
+            }
             HTML = HTML.split(matchArr[0])[1];
         }
         // Comment Start
         else if (HTML.indexOf("<!--") === 0) {
             var commentCloseIndex = HTML.indexOf('-->');
-            console.log(commentCloseIndex);
             HTML = (commentCloseIndex === -1) ? "" :
                 HTML.substr(commentCloseIndex);
-            console.log(HTML);
         }
         // Tag Start
         else if (HTML.indexOf("<") === 0) {
@@ -131,7 +127,8 @@ if (typeof HTML !== 'undefined') {
             console.log('Open: ', openElm);
             if (openElm === 'html') {
                 if (root) {
-                    displayError('Miltiple opening html tags encountered!');
+                    errors.push('Miltiple opening html tags encountered!');
+                    // break;
                 }
                 root = new Tree.node('html');
                 curr = root;
@@ -152,14 +149,14 @@ if (typeof HTML !== 'undefined') {
         }
     }
     if (!symStack.isEmpty()) {
-        displayError('Invalid HTML');
+        errors.push('Invalid HTML');
     }
     if (errors.length !== 0) {
-        // console.log('Some errors:', errors);
+        console.log('Errors:', errors);
         for (var i = 0; i < errors.length; i++) {
-            throw new Error(errors[i]);
+            // throw new Error(errors[i]);
         }
     }
-    printTree(root || {});
+    printTree(root);
 }
 
