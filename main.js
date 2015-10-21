@@ -25,6 +25,10 @@ function assertStartBeforeEnd(type) {
     "";
 }
 
+function displayError(msg) {
+    throw new Error(msg);
+}
+
 var Stack = function() {
     this.data = [];
     this.size = 0;
@@ -62,6 +66,7 @@ Tree.node = function(name, parent) {
         "O";
     this.parent = (typeof parent !== 'undefined' && parent !== null) ?
         parent : "GOD";
+    this.attrs = [];
 };
 
 Tree.node.prototype = {
@@ -82,13 +87,15 @@ function printTree(root) {
 // var HTML = "<html><head></head><body><div><span></span></div></body></html>";
 // var HTML = "<html><head></head><body><div>This is a div</div></body></html>";
 // var HTML = "<html><head></head><body><div>This is a div</div></html>";
-var HTML = "<html><head></head><body></body></html>";
+// var HTML = "<html><head></head><body></body></html>";
+// var HTML = "<html><head></head><body><div></div></body></html>";
+var HTML = "<HTML><head></head><body><!--This is a comment, this should be ignored .. <br></body></HTML>";
+// var HTML = "<HTML><head></head><body><!--This is a comment, this should be ignored .. --><br></body></HTML>";
+// var HTML = ">HTML></head></head><body><!--This is a comment, this should be ignored .. --><br></body></HTML>";
 
 var symStack = new Stack();
-    // indexStack = new Stack(),
-    // nodesStack = new Stack();
 
-var root, openElm, closeElm, errors = [], curr, matchArr = [];
+var root, openElm, closeElm, errors = [], curr, matchArr = [], warnings = [];
 
 if (typeof HTML !== 'undefined') {
     while (HTML.length >= 1) {
@@ -98,7 +105,7 @@ if (typeof HTML !== 'undefined') {
         // Tag End
         else if (HTML.indexOf("</") === 0) {
             if (!assertStartBeforeEnd("tag")) {
-                errors.push('Closing tag encountered before an opening one!');
+                displayError('Closing tag encountered before an opening one!');
                 break;
             }
             symStack.pop();
@@ -108,46 +115,51 @@ if (typeof HTML !== 'undefined') {
             curr = curr.parent;
             HTML = HTML.split(matchArr[0])[1];
         }
+        // Comment Start
+        else if (HTML.indexOf("<!--") === 0) {
+            var commentCloseIndex = HTML.indexOf('-->');
+            console.log(commentCloseIndex);
+            HTML = (commentCloseIndex === -1) ? "" :
+                HTML.substr(commentCloseIndex);
+            console.log(HTML);
+        }
         // Tag Start
         else if (HTML.indexOf("<") === 0) {
             symStack.push("<");
             matchArr = HTML.match(TAG_START_REGEX);
             openElm = matchArr[1].toLowerCase();
             console.log('Open: ', openElm);
-            if (curr) {
+            if (openElm === 'html') {
+                if (root) {
+                    displayError('Miltiple opening html tags encountered!');
+                }
+                root = new Tree.node('html');
+                curr = root;
+            }
+            else if (curr) {
                 var newNode = new Tree.node(openElm, curr);
                 curr.addChild(newNode);
                 curr = newNode;
-            }
-            if (openElm === 'html') {
-                if (root) {
-                    errors.push('Multiple opening html tags encountered!');
-                    break;
-                }
-                else {
-                    root = new Tree.node('html');
-                    curr = root;
+                if (curr.type === 'V') {
+                    symStack.pop();
+                    curr = curr.parent;
                 }
             }
             HTML = HTML.split(matchArr[0])[1];
-        }
-        // Comment Start
-        else if (HTML.indexOf("<!--") === 0) {
-        }
-        // Comment End
-        else if (HTML.indexOf("-->") === 0) {
-            if (!assertStartBeforeEnd("comment")) continue;
         }
         else {
             HTML = HTML.substr(1);
         }
     }
     if (!symStack.isEmpty()) {
-        errors.push('Invalid HTML');
+        displayError('Invalid HTML');
     }
     if (errors.length !== 0) {
-        console.log('Some errors:', errors);
+        // console.log('Some errors:', errors);
+        for (var i = 0; i < errors.length; i++) {
+            throw new Error(errors[i]);
+        }
     }
-    printTree(root);
+    printTree(root || {});
 }
 
