@@ -25,6 +25,12 @@ function assertStartBeforeEnd(type) {
     "";
 }
 
+function isDoctypePresent(str) {
+    return str.indexOf('<!') !== 0 ? false :
+        str.substr(str.indexOf('<!'), str.indexOf('>')).toLowerCase() ===
+        'doctype html' ? true : false;
+}
+
 var Stack = function() {
     this.data = [];
     this.size = 0;
@@ -94,6 +100,9 @@ var symStack = new Stack();
 var root = {}, openElm, closeElm, errors = [], curr, matchArr = [], warnings = [];
 
 if (typeof HTML !== 'undefined') {
+    if(!isDoctypePresent(HTML)) {
+        warnings.push('No <!DOCTYPE html> declaration found');
+    }
     while (HTML.length >= 1) {
         if (!HTML) {
             break;
@@ -151,11 +160,11 @@ if (typeof HTML !== 'undefined') {
     if (!symStack.isEmpty()) {
         errors.push('Invalid HTML');
     }
-    if (errors.length !== 0) {
+    if (warnings.length > 0) {
+        console.log('warnings: ', warnings);
+    }
+    if (errors.length > 0) {
         console.log('Errors:', errors);
-        for (var i = 0; i < errors.length; i++) {
-            // throw new Error(errors[i]);
-        }
     }
     printTree(root);
 }
