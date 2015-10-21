@@ -1,2 +1,2 @@
-# xml-parser
-Implementation of a basic XML parser in Javascript
+# HTML-parser
+An HTML parser implementation purely in JavaScript.
