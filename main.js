@@ -12,160 +12,174 @@ statElems.autoClose = makeObj(AUTOCLOSE_ELEMS);
 statElems.block = makeObj(BLOCK_ELEMS);
 
 function makeObj(str) {
-    var obj = {};
-    obj = str.split(',').map(function(elem) { return elem; });
-    return obj;
+  var obj = {};
+  obj = str.split(',').map(function(elem) { return elem; });
+  return obj;
 }
 
 function assertStartBeforeEnd(type) {
-    return type === "tag" ?
-        (symStack.top() === "<" ? true : false) :
-    type === "comment" ?
-        (symStack.top() === "<!--" ? true : false) :
-    "";
+  return type === "tag" ?
+    (symStack.top() === "<" ? true : false):
+  type === "comment" ?
+    (symStack.top() === "<!--" ? true : false):
+  "";
 }
 
 function isDoctypePresent(str) {
-    return str.indexOf('<!') !== 0 ? false :
-        str.substr(str.indexOf('<!'), str.indexOf('>')).toLowerCase() ===
-        'doctype html' ? true : false;
+  // console.log(str.substr(str.indexOf('<!'), str.indexOf('>')).toLowerCase());
+  // print(str.substr(str.indexOf('<!'), str.indexOf('>')).toLowerCase());
+  return str.indexOf('<!') !== 0 ? false :
+    str.substr(str.indexOf('<!'), str.indexOf('>')).toLowerCase().indexOf('doctype html') !== -1 ?
+    true : false;
 }
 
 var Stack = function() {
-    this.data = [];
-    this.size = 0;
+  this.data = [];
+  this.size = 0;
 };
 
 Stack.prototype = {
-    constructor: Stack,
-    top: function() {
-        return this.data[this.size-1];
-    },
-    push: function(val) {
-        return this.data.push(val) && this.size++;
-    },
-    pop: function() {
-        return this.data.pop() && this.size--;
-    },
-    print: function() {
-        for (var i = 0; i < this.size; i++) {
-            console.log(this.data[i]);
-        }
-    },
-    isEmpty: function() {
-        return this.size === 0 ? true : false;
+  constructor: Stack,
+  top: function() {
+    return this.data[this.size-1];
+  },
+  push: function(val) {
+    return this.data.push(val) && this.size++;
+  },
+  pop: function() {
+    return this.data.pop() && this.size--;
+  },
+  print: function() {
+    for (var i = 0; i < this.size; i++) {
+      console.log(this.data[i]);
+      // print(this.data[i]);
     }
+  },
+  isEmpty: function() {
+    return this.size === 0 ? true : false;
+  }
 };
 
 var Tree = {};
 Tree.node = function(name, parent) {
-    this.id = TREEID++;
-    this.name = name;
-    this.children = [];
-    this.type = statElems.voidElm.indexOf(name) !== -1 ? "V" :
-        statElems.autoClose.indexOf(name) !== -1 ? "A" :
-        statElems.block.indexOf(name) !== -1 ? "B" :
-        "O";
-    this.parent = (typeof parent !== 'undefined' && parent !== null) ?
-        parent : "GOD";
-    this.attrs = [];
+  this.id = TREEID++;
+  this.name = name;
+  this.children = [];
+  this.type = statElems.voidElm.indexOf(name) !== -1 ?
+    "V": statElems.autoClose.indexOf(name) !== -1 ?
+    "A": statElems.block.indexOf(name) !== -1 ?
+    "B": "O";
+  this.parent = (typeof parent !== 'undefined' && parent !== null) ?
+    parent : "GOD";
+  this.attrs = [];
 };
 
 Tree.node.prototype = {
-    constructor: Tree.node,
-    addChild: function(childObj) {
-        this.children.push(childObj);
-    },
-    getChildren: function() {
-        return this.children;
-    },
+  constructor: Tree.node,
+  addChild: function(childObj) {
+    this.children.push(childObj);
+  },
+  getChildren: function() {
+    return this.children;
+  }
 };
 
 function printTree(root) {
-    console.log(root);
+  console.log(root);
+  // print(root);
 }
 
 // Static HTML for now..
-// var HTML = "<html><head></head><body><div><span></span></div></body></html>";
 // var HTML = "<html><head></head><body><div>This is a div</div></body></html>";
-// var HTML = "<html><head></head><body><div>This is a div</div></html>";
-// var HTML = "<html><head></head><body></body></html>";
 // var HTML = "<html><head></head><body><div></div></body></html>";
+
+// var HTML = "<html><head></head><body><div><span></span></div></body></html>";
 // var HTML = "<HTML><head></head><body><!--This is a comment, this should be ignored .. <br></body></HTML>";
-// var HTML = "<HTML><head></head><body><!--This is a comment, this should be ignored .. --><br></body></HTML>";
-var HTML = ">HTML></head></head><body><!--This is a comment, this should be ignored .. --><br></body></HTML>";
+var HTML = "<HTML><head></head><body><!--This is a comment, this should be ignored .. --><br></body></HTML>";
+// var HTML = ">HTML><head></head><body><!--This is a comment, this should be ignored .. --></body></HTML>";
+// var HTML = "<HTML><head><head><body><!--This is a comment, this should be ignored .. --></body></HTML>";
+// print(HTML);
+console.log(HTML);
 
 var symStack = new Stack();
 
 var root = {}, openElm, closeElm, errors = [], curr, matchArr = [], warnings = [];
 
 if (typeof HTML !== 'undefined') {
-    if(!isDoctypePresent(HTML)) {
-        warnings.push('No <!DOCTYPE html> declaration found');
+  if(!isDoctypePresent(HTML)) {
+    // warnings.push('No <!DOCTYPE html> declaration found');
+  }
+  while (HTML.length >= 1) {
+    if (!HTML) {
+      break;
     }
-    while (HTML.length >= 1) {
-        if (!HTML) {
-            break;
+    // Tag End
+    else if (HTML.indexOf("</") === 0) {
+      if (!assertStartBeforeEnd("tag")) {
+        errors.push('Closing tag encountered before an opening one!');
+        // break;
+      }
+      symStack.pop();
+      matchArr = HTML.match(TAG_END_REGEX);
+      closeElm = matchArr[2].substr(1).toLowerCase();
+      console.log('Close: ', closeElm);
+      // print('Close: ', closeElm);
+      if (curr) {
+        curr = curr.parent;
+      }
+      HTML = HTML.split(matchArr[0])[1];
+    }
+    // Comment Start
+    else if (HTML.indexOf("<!--") === 0) {
+      var commentCloseIndex = HTML.indexOf('-->');
+      HTML = (commentCloseIndex === -1) ? "" :
+        HTML.substr(commentCloseIndex);
+    }
+    // Tag Start
+    else if (HTML.indexOf("<") === 0) {
+      symStack.push("<");
+      matchArr = HTML.match(TAG_START_REGEX);
+      openElm = matchArr[1].toLowerCase();
+      console.log('Open: ', openElm);
+      // print('Open: ', openElm);
+      if (openElm === 'html') {
+        if (Object.keys(root).length !== 0) {
+          errors.push('Multiple opening html tags encountered!');
+          // break;
         }
-        // Tag End
-        else if (HTML.indexOf("</") === 0) {
-            if (!assertStartBeforeEnd("tag")) {
-                errors.push('Closing tag encountered before an opening one!');
-                // break;
-            }
+        root = new Tree.node('html');
+        curr = root;
+      } else {
+        if (curr) {
+          var newNode = new Tree.node(openElm, curr);
+          curr.addChild(newNode);
+          curr = newNode;
+          // console.log('Current: ', curr);
+          // print('Current: ', curr.name, curr.type);
+          if (curr.type === 'V') {
             symStack.pop();
-            matchArr = HTML.match(TAG_END_REGEX);
-            closeElm = matchArr[2].substr(1).toLowerCase();
-            console.log('Close: ', closeElm);
-            if (curr) {
-                curr = curr.parent;
-            }
-            HTML = HTML.split(matchArr[0])[1];
+            curr = curr.parent;
+          }
+        } else {
+          warnings.push(openElm + ' found before html');
         }
-        // Comment Start
-        else if (HTML.indexOf("<!--") === 0) {
-            var commentCloseIndex = HTML.indexOf('-->');
-            HTML = (commentCloseIndex === -1) ? "" :
-                HTML.substr(commentCloseIndex);
-        }
-        // Tag Start
-        else if (HTML.indexOf("<") === 0) {
-            symStack.push("<");
-            matchArr = HTML.match(TAG_START_REGEX);
-            openElm = matchArr[1].toLowerCase();
-            console.log('Open: ', openElm);
-            if (openElm === 'html') {
-                if (root) {
-                    errors.push('Miltiple opening html tags encountered!');
-                    // break;
-                }
-                root = new Tree.node('html');
-                curr = root;
-            }
-            else if (curr) {
-                var newNode = new Tree.node(openElm, curr);
-                curr.addChild(newNode);
-                curr = newNode;
-                if (curr.type === 'V') {
-                    symStack.pop();
-                    curr = curr.parent;
-                }
-            }
-            HTML = HTML.split(matchArr[0])[1];
-        }
-        else {
-            HTML = HTML.substr(1);
-        }
+      }
+      HTML = HTML.split(matchArr[0])[1];
     }
-    if (!symStack.isEmpty()) {
-        errors.push('Invalid HTML');
+    else {
+      HTML = HTML.substr(1);
     }
-    if (warnings.length > 0) {
-        console.log('warnings: ', warnings);
-    }
-    if (errors.length > 0) {
-        console.log('Errors:', errors);
-    }
-    printTree(root);
+  }
+  if (!symStack.isEmpty()) {
+    errors.push('Invalid HTML');
+  }
+  if (warnings.length > 0) {
+    console.log('warnings: ', warnings);
+    // print('warnings: ', warnings);
+  }
+  if (errors.length > 0) {
+    console.log('Errors:', errors);
+    // print('Errors:', errors);
+  }
+  printTree(root);
 }
-
