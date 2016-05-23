@@ -26,8 +26,6 @@ function assertStartBeforeEnd(type) {
 }
 
 function isDoctypePresent(str) {
-  // console.log(str.substr(str.indexOf('<!'), str.indexOf('>')).toLowerCase());
-  // print(str.substr(str.indexOf('<!'), str.indexOf('>')).toLowerCase());
   return str.indexOf('<!') !== 0 ? false :
     str.substr(str.indexOf('<!'), str.indexOf('>')).toLowerCase().indexOf('doctype html') !== -1 ?
     true : false;
@@ -86,100 +84,110 @@ Tree.node.prototype = {
 
 function printTree(root) {
   console.log(root);
-  // print(root);
 }
 
-// Static HTML for now..
-// var HTML = "<html><head></head><body><div>This is a div</div></body></html>";
-// var HTML = "<html><head></head><body><div></div></body></html>";
-
-// var HTML = "<html><head></head><body><div><span></span></div></body></html>";
-// var HTML = "<HTML><head></head><body><!--This is a comment, this should be ignored .. <br></body></HTML>";
-var HTML = "<HTML><head></head><body><!--This is a comment, this should be ignored .. --><br></body></HTML>";
-// var HTML = ">HTML><head></head><body><!--This is a comment, this should be ignored .. --></body></HTML>";
-// var HTML = "<HTML><head><head><body><!--This is a comment, this should be ignored .. --></body></HTML>";
-// print(HTML);
-console.log(HTML);
+function readInputHTML() {
+  var elem = document.getElementById('input');
+  parseHTML(elem.value);
+  elem.value = '';
+}
 
 var symStack = new Stack();
 
 var root = {}, openElm, closeElm, errors = [], curr, matchArr = [], warnings = [];
 
-if (typeof HTML !== 'undefined') {
-  if(!isDoctypePresent(HTML)) {
-    // warnings.push('No <!DOCTYPE html> declaration found');
-  }
-  while (HTML.length >= 1) {
-    if (!HTML) {
-      break;
+var DOCTYPE_WARNING_TEXT = 'No <!DOCTYPE html> declaration found';
+
+function parseHTML(HTML) {
+  console.log(HTML);
+
+  if (typeof HTML !== 'undefined') {
+    if(!isDoctypePresent(HTML) && warnings.indexOf(DOCTYPE_WARNING_TEXT) === -1) {
+      warnings.push(DOCTYPE_WARNING_TEXT);
     }
-    // Tag End
-    else if (HTML.indexOf("</") === 0) {
-      if (!assertStartBeforeEnd("tag")) {
-        errors.push('Closing tag encountered before an opening one!');
-        // break;
+    while (HTML.length >= 1) {
+      if (!HTML) {
+        break;
       }
-      symStack.pop();
-      matchArr = HTML.match(TAG_END_REGEX);
-      closeElm = matchArr[2].substr(1).toLowerCase();
-      console.log('Close: ', closeElm);
-      // print('Close: ', closeElm);
-      if (curr) {
-        curr = curr.parent;
-      }
-      HTML = HTML.split(matchArr[0])[1];
-    }
-    // Comment Start
-    else if (HTML.indexOf("<!--") === 0) {
-      var commentCloseIndex = HTML.indexOf('-->');
-      HTML = (commentCloseIndex === -1) ? "" :
-        HTML.substr(commentCloseIndex);
-    }
-    // Tag Start
-    else if (HTML.indexOf("<") === 0) {
-      symStack.push("<");
-      matchArr = HTML.match(TAG_START_REGEX);
-      openElm = matchArr[1].toLowerCase();
-      console.log('Open: ', openElm);
-      // print('Open: ', openElm);
-      if (openElm === 'html') {
-        if (Object.keys(root).length !== 0) {
-          errors.push('Multiple opening html tags encountered!');
+      // Tag End
+      else if (HTML.indexOf("</") === 0) {
+        if (!assertStartBeforeEnd("tag")) {
+          errors.push('Closing tag encountered before an opening one!');
           // break;
         }
-        root = new Tree.node('html');
-        curr = root;
-      } else {
+        symStack.pop();
+        matchArr = HTML.match(TAG_END_REGEX);
+        closeElm = matchArr[2].substr(1).toLowerCase();
+        console.log('Close: ', closeElm);
         if (curr) {
-          var newNode = new Tree.node(openElm, curr);
-          curr.addChild(newNode);
-          curr = newNode;
-          // console.log('Current: ', curr);
-          // print('Current: ', curr.name, curr.type);
-          if (curr.type === 'V') {
-            symStack.pop();
-            curr = curr.parent;
-          }
-        } else {
-          warnings.push(openElm + ' found before html');
+          curr = curr.parent;
         }
+        HTML = HTML.split(matchArr[0])[1];
       }
-      HTML = HTML.split(matchArr[0])[1];
+      // Comment Start
+      else if (HTML.indexOf("<!--") === 0) {
+        var commentCloseIndex = HTML.indexOf('-->');
+        HTML = (commentCloseIndex === -1) ? "" :
+          HTML.substr(commentCloseIndex);
+      }
+      // Tag Start
+      else if (HTML.indexOf("<") === 0) {
+        symStack.push("<");
+        matchArr = HTML.match(TAG_START_REGEX);
+        openElm = matchArr[1].toLowerCase();
+        console.log('Open: ', openElm);
+        // print('Open: ', openElm);
+        if (openElm === 'html') {
+          if (Object.keys(root).length !== 0) {
+            errors.push('Multiple opening html tags encountered!');
+            // break;
+          }
+          root = new Tree.node('html');
+          curr = root;
+        } else {
+          if (curr) {
+            var newNode = new Tree.node(openElm, curr);
+            curr.addChild(newNode);
+            curr = newNode;
+            // console.log('Current: ', curr);
+            // print('Current: ', curr.name, curr.type);
+            if (curr.type === 'V') {
+              symStack.pop();
+              curr = curr.parent;
+            }
+          } else {
+            warnings.push(openElm + ' found before html');
+          }
+        }
+        HTML = HTML.split(matchArr[0])[1];
+      }
+      else {
+        HTML = HTML.substr(1);
+      }
     }
-    else {
-      HTML = HTML.substr(1);
+    if (!symStack.isEmpty()) {
+      errors.push('Invalid HTML');
     }
+    if (warnings.length > 0) {
+      console.log('warnings: ', warnings);
+      // print('warnings: ', warnings);
+    }
+    if (errors.length > 0) {
+      console.log('Errors:', errors);
+      // print('Errors:', errors);
+    }
+    printTree(root);
   }
-  if (!symStack.isEmpty()) {
-    errors.push('Invalid HTML');
-  }
-  if (warnings.length > 0) {
-    console.log('warnings: ', warnings);
-    // print('warnings: ', warnings);
-  }
-  if (errors.length > 0) {
-    console.log('Errors:', errors);
-    // print('Errors:', errors);
-  }
-  printTree(root);
 }
+
+// Static HTML for now..
+var HTML = window.HTML;
+// var HTML = "<html><head></head><body><div>This is a div</div></body></html>";
+// var HTML = "<html><head></head><body><div></div></body></html>";
+
+// var HTML = "<html><head></head><body><div><span></span></div></body></html>";
+// var HTML = "<HTML><head></head><body><!--This is a comment, this should be ignored .. <br></body></HTML>";
+// var HTML = "<HTML><head></head><body><!--This is a comment, this should be ignored .. --><br></body></HTML>";
+// var HTML = ">HTML><head></head><body><!--This is a comment, this should be ignored .. --></body></HTML>";
+// var HTML = "<HTML><head><head><body><!--This is a comment, this should be ignored .. --></body></HTML>";
+// print(HTML);
